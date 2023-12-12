@@ -6,3 +6,4 @@ public class Util {
         return arr[randomIndex];
     }
 }
+//从数组中随机选一个值

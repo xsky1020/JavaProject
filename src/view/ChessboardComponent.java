@@ -54,7 +54,6 @@ public class ChessboardComponent extends JComponent {
         }
 
     }
-
     public void initiateGridComponents() {
 
         for (int i = 0; i < CHESSBOARD_ROW_SIZE.getNum(); i++) {
@@ -80,7 +79,10 @@ public class ChessboardComponent extends JComponent {
     public void setChessComponentAtGrid(ChessboardPoint point, ChessComponent chess) {
         getGridComponentAt(point).add(chess);
     }
-
+    public void setChessComponentAtGrid(ChessboardPoint point, ChessPiece chess){
+        ChessComponent Chess = new ChessComponent(CHESS_SIZE, chess);
+        getGridComponentAt(point).add(Chess);
+    }
     public ChessComponent removeChessComponentAtGrid(ChessboardPoint point) {
         // Note re-validation is required after remove / removeAll.
         ChessComponent chess = (ChessComponent) getGridComponentAt(point).getComponents()[0];
@@ -110,7 +112,13 @@ public class ChessboardComponent extends JComponent {
         gameController.onPlayerNextStep();
     }
 
+    public void newGame(){
+        gameController.onPlayerNewGame();
+    }
 
+    public void loadGameFromFile(String path){
+        gameController.onPlayerLoadGameFromFile(path);
+    }
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);

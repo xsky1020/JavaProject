@@ -7,6 +7,15 @@ import model.ChessboardPoint;
 import view.CellComponent;
 import view.ChessComponent;
 import view.ChessboardComponent;
+import view.Respond;
+import view.ScoreComponent;
+import view.StepLeftComponent;
+import javax.swing.*;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.Scanner;
+
 
 /**
  * Controller is the connection between model and view,
@@ -20,22 +29,28 @@ public class GameController implements GameListener {
 
     private Chessboard model;
     private ChessboardComponent view;
-
+    //private ChessScoreComponent score;
     // Record whether there is a selected piece before
+
     private ChessboardPoint selectedPoint;
     private ChessboardPoint selectedPoint2;
-
-    public GameController(ChessboardComponent view, Chessboard model) {
+    private ScoreComponent score;
+    private StepLeftComponent stepLeft;
+    public GameController(ChessboardComponent view, Chessboard model, ScoreComponent score, StepLeftComponent stepLeft) {
         this.view = view;
         this.model = model;
-
+        this.score = score;
+        this.stepLeft = stepLeft;
+        //this.score = new ChessScoreComponent();
         view.registerController(this);
         initialize();
         view.initiateChessComponent(model);
         view.repaint();
+        //score.repaint();
     }
 
     private void initialize() {
+
         for (int i = 0; i < Constant.CHESSBOARD_ROW_SIZE.getNum(); i++) {
             for (int j = 0; j < Constant.CHESSBOARD_COL_SIZE.getNum(); j++) {
 
@@ -47,21 +62,260 @@ public class GameController implements GameListener {
     @Override
     public void onPlayerClickCell(ChessboardPoint point, CellComponent component) {
     }
-
+    public void onPlayerNewGame(){
+        for (int i = 0; i < Constant.CHESSBOARD_ROW_SIZE.getNum(); i++) {
+            for (int j = 0; j < Constant.CHESSBOARD_COL_SIZE.getNum(); j++) {
+                if(model.getGrid()[i][j].getPiece() != null)
+                    view.removeChessComponentAtGrid(new ChessboardPoint(i, j));
+            }
+        }
+        model = new Chessboard(0);
+        view.initiateChessComponent(model);
+        view.repaint();
+        selectedPoint = null;
+        selectedPoint2 = null;
+    }
+    public void onPlayerLoadGameFromFile(String path){
+        File file = new File(path);
+        Scanner in;
+        try{
+            in = new Scanner(file);
+            int[][] a = new int[Constant.CHESSBOARD_ROW_SIZE.getNum()][];
+            for(int i = 0; i < Constant.CHESSBOARD_ROW_SIZE.getNum(); i++){
+                a[i] = new int[Constant.CHESSBOARD_COL_SIZE.getNum()];
+            }
+            for(int i = 0; i < Constant.CHESSBOARD_ROW_SIZE.getNum(); i++){
+                String[] Line = in.nextLine().split(",");
+                for(int j = 0; j < Constant.CHESSBOARD_COL_SIZE.getNum(); j++){
+                    a[i][j] = Integer.parseInt(Line[j]);
+                }
+            }
+            for (int i = 0; i < Constant.CHESSBOARD_ROW_SIZE.getNum(); i++) {
+                for (int j = 0; j < Constant.CHESSBOARD_COL_SIZE.getNum(); j++) {
+                    if(model.getGrid()[i][j].getPiece() != null)
+                        view.removeChessComponentAtGrid(new ChessboardPoint(i, j));
+                }
+            }
+            model = new Chessboard(a);
+            view.initiateChessComponent(model);
+            view.repaint();
+            selectedPoint = null;
+            selectedPoint2 = null;
+        }catch(FileNotFoundException e){
+            System.out.println("File not found");
+        }
+    }
+    private void Wait(){
+        for(int i = 1; i <= 1e9; i++);
+    }
     @Override
     public void onPlayerSwapChess(){
+        if(model.CanEliminate()){
+            Respond.show("Click Next Step button first");
+            return;
+        }
         // TODO: Init your swap function here.
-
-        System.out.println("Implement your swap here.");
+        if(selectedPoint != null && selectedPoint2 != null){
+            model.swapChessPiece(selectedPoint, selectedPoint2);
+            var point1 = (ChessComponent)view.getGridComponentAt(selectedPoint).getComponent(0);
+            var point2 = (ChessComponent)view.getGridComponentAt(selectedPoint2).getComponent(0);
+            point1.setSelected(false);
+            point2.setSelected(false);
+            point1.repaint();
+            point2.repaint();
+            if(!model.CanEliminate()){
+                //swap back
+                model.swapChessPiece(selectedPoint, selectedPoint2);
+                JOptionPane.showMessageDialog(null,"You can't swap these two chesses");
+                selectedPoint = null;
+                selectedPoint2 = null;
+                return;
+            }
+            stepLeft.swapUpdate();
+            //ChessComponent tmp1, tmp2;
+            //view.removeChessComponentAtGrid(selectedPoint);
+            //view.removeChessComponentAtGrid(selectedPoint2);
+            view.setChessComponentAtGrid(selectedPoint, point2);
+            view.setChessComponentAtGrid(selectedPoint2, point1);
+            view.repaint();
+            selectedPoint = null;
+            selectedPoint2 = null;
+            Eliminate();
+            view.repaint();
+        }
+        else{
+            Respond.show("Please selected two points first");
+        }
+        //System.out.println("Implement your swap here.");
     }
 
+    private int[][] NeedEliminate(){
+        int[][] res = new int[Constant.CHESSBOARD_ROW_SIZE.getNum()][];
+        for(int i = 0; i < Constant.CHESSBOARD_ROW_SIZE.getNum(); i++){
+            res[i] = new int[Constant.CHESSBOARD_COL_SIZE.getNum()];
+        }
+        for (int i = 0; i < Constant.CHESSBOARD_ROW_SIZE.getNum(); i++) {
+            for (int j = 0; j < Constant.CHESSBOARD_COL_SIZE.getNum(); j++) {
+                res[i][j] = 0;
+            }
+        }
+        for (int i = 0; i < Constant.CHESSBOARD_ROW_SIZE.getNum(); i++) {
+            for (int j = 0; j < Constant.CHESSBOARD_COL_SIZE.getNum(); j++) {
+                int k;
+                for(k = i + 1; k < Constant.CHESSBOARD_ROW_SIZE.getNum(); k++){
+                    if(!model.getGrid()[i][j].getPiece().getName().equals(model.getGrid()[k][j].getPiece().getName())){
+                        break;
+                    }
+                }
+                if(k - i >= 3){
+                    for(int l = i; l < k; l++){
+                        //model.removeChessPiece(new ChessboardPoint(k, j));
+                        //view.removeChessComponentAtGrid(new ChessboardPoint(k, j));
+                        res[l][j] = Constant.findNum.get(model.getGrid()[i][j].getPiece().getName());
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < Constant.CHESSBOARD_ROW_SIZE.getNum(); i++) {
+            for (int j = 0; j < Constant.CHESSBOARD_COL_SIZE.getNum(); j++) {
+                int k;
+                for(k = j + 1; k < Constant.CHESSBOARD_COL_SIZE.getNum(); k++){
+                    if(!model.getGrid()[i][j].getPiece().getName().equals(model.getGrid()[i][k].getPiece().getName())){
+                        break;
+                    }
+                }
+                if(k - j >= 3){
+                    for(int l = j; l < k; l++){
+                        //model.removeChessPiece(new ChessboardPoint(i, k));
+                        //view.removeChessComponentAtGrid(new ChessboardPoint(i, k));
+                        res[i][l] = Constant.findNum.get(model.getGrid()[i][j].getPiece().getName());
+                    }
+                }
+            }
+        }
+        return res;
+    }
+    private void Eliminate(){
+        if(!model.CanEliminate()){
+            return;
+        }
+        int[][] e = NeedEliminate();
+        boolean[][] tmp1 = new boolean[Constant.CHESSBOARD_ROW_SIZE.getNum()][];
+        boolean[][] tmp2 = new boolean[Constant.CHESSBOARD_COL_SIZE.getNum()][];
+        for(int i = 0; i < Constant.CHESSBOARD_ROW_SIZE.getNum(); i++) {
+            tmp1[i] = new boolean[Constant.CHESSBOARD_COL_SIZE.getNum()];
+            tmp2[i] = new boolean[Constant.CHESSBOARD_COL_SIZE.getNum()];
+        }
+        for (int i = 0; i < Constant.CHESSBOARD_ROW_SIZE.getNum(); i++) {
+            for (int j = 0; j < Constant.CHESSBOARD_COL_SIZE.getNum(); j++) {
+                view.removeChessComponentAtGrid(new ChessboardPoint(i, j));
+            }
+        }
+        for (int i = 0; i < Constant.CHESSBOARD_ROW_SIZE.getNum(); i++) {
+            for (int j = 0; j < Constant.CHESSBOARD_COL_SIZE.getNum(); j++) {
+                if(e[i][j] > 0){
+                    model.removeChessPiece(new ChessboardPoint(i, j));
+                    //view.removeChessComponentAtGrid(new ChessboardPoint(i, j));
+                    //System.out.println(view.getGridComponentAt(new ChessboardPoint(i, j)));
+                    //view.repaint();
+                }
+                tmp1[i][j] = false;
+                tmp2[i][j] = false;
+                //System.out.print(e[i][j] + " ");
+            }
+            //System.out.println();
+        }
+        view.initiateChessComponent(model);
+        view.repaint();
+        int dscore = 0;
+        for (int i = 0; i < Constant.CHESSBOARD_ROW_SIZE.getNum(); i++) {
+            for (int j = 0; j < Constant.CHESSBOARD_COL_SIZE.getNum(); j++) {
+                if(tmp1[i][j])
+                    continue;
+                if(e[i][j] == 0)
+                    continue;
+                int k;
+                for(k = i + 1; k < Constant.CHESSBOARD_ROW_SIZE.getNum(); k++){
+                    if(e[k][j] != e[i][j])
+                        break;
+                }
+                if(k - i >= 3){
+                    for(int l = i; l < k; l++){
+                        tmp1[l][j] = true;
+                    }
+                    dscore += (k - i) * 10;
+                }
+            }
+        }
+        for (int i = 0; i < Constant.CHESSBOARD_ROW_SIZE.getNum(); i++) {
+            for (int j = 0; j < Constant.CHESSBOARD_COL_SIZE.getNum(); j++) {
+                if(tmp2[i][j])
+                    continue;
+                if(e[i][j] == 0)
+                    continue;
+                int k;
+                for(k = j + 1; k < Constant.CHESSBOARD_COL_SIZE.getNum(); k++){
+                    if(e[i][k] != e[i][j])
+                        break;
+                }
+                if(k - j >= 3){
+                    for(int l = j; l < k; l++){
+                        tmp2[i][l] = true;
+                    }
+                    dscore += (k - j) * 10;
+                }
+            }
+        }
+        score.addScore(dscore);
+    }
+    private void ChessDown(){
+        for(int i = Constant.CHESSBOARD_ROW_SIZE.getNum() - 1; i >= 0; i--){
+            for(int j = 0; j < Constant.CHESSBOARD_COL_SIZE.getNum(); j++){
+                if(model.getGrid()[i][j].getPiece() == null)
+                    continue;
+                int k = i;
+                while((k + 1 < Constant.CHESSBOARD_ROW_SIZE.getNum() - 1) && model.getGrid()[k + 1][j].getPiece() == null){
+                    ChessboardPoint p1 = new ChessboardPoint(k, j);
+                    ChessboardPoint p2 = new ChessboardPoint(k + 1, j);
+                    model.swapChessPiece(p1, p2);
+                    var point1 = (ChessComponent)view.getGridComponentAt(p1).getComponent(0);
+                    view.setChessComponentAtGrid(p2, point1);
+                    //view.removeChessComponentAtGrid(p1);
+                    k++;
+                }
+            }
+        }
+        view.repaint();
+    }
+    private void Complement(){
+        for (int i = 0; i < Constant.CHESSBOARD_ROW_SIZE.getNum(); i++) {
+            for (int j = 0; j < Constant.CHESSBOARD_COL_SIZE.getNum(); j++) {
+                if(model.getGrid()[i][j].getPiece() != null)
+                    view.removeChessComponentAtGrid(new ChessboardPoint(i, j));
+            }
+        }
+        boolean[][] tmp = new boolean[Constant.CHESSBOARD_ROW_SIZE.getNum()][];
+        for(int i = 0; i < Constant.CHESSBOARD_ROW_SIZE.getNum(); i++){
+            tmp[i] = new boolean[Constant.CHESSBOARD_COL_SIZE.getNum()];
+            for(int j = 0; j < Constant.CHESSBOARD_COL_SIZE.getNum(); j++){
+                tmp[i][j] = false;
+                if(model.getGrid()[i][j].getPiece() == null){
+                    tmp[i][j] = true;
+                }
+            }
+        }
+        model.complement(0);
+        view.initiateChessComponent(model);
+        view.repaint();
+    }
     @Override
-    public void onPlayerNextStep(){
+    public void onPlayerNextStep() {
         // TODO: Init your next step function here.
-
-        System.out.println("Implement your next step here.");
+        // System.out.println("Implement your next step here.");
+        Eliminate();
+        ChessDown();
+        Complement();
     }
-
     // click a cell with a chess
     @Override
     public void onPlayerClickChessPiece(ChessboardPoint point, ChessComponent component) {
@@ -95,6 +349,8 @@ public class GameController implements GameListener {
             }
             return;
         }
+
+        
         if (selectedPoint == null) {
             selectedPoint = point;
             component.setSelected(true);
