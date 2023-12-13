@@ -22,5 +22,16 @@ public enum Constant {
         put("▲",Color.green);
         put("🔶",Color.orange);
     }};
-
+    public static Map<Integer, String> findMap = new HashMap<>(){{
+        put(1, "💎");
+        put(2, "⚪");
+        put(3, "▲");
+        put(4, "🔶");
+    }};
+    public static Map<String, Integer> findNum = new HashMap<>(){{
+        put("💎", 1);
+        put("⚪", 2);
+        put("▲", 3);
+        put("🔶", 4);
+    }};
 }
