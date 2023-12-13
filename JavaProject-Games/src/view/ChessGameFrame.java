@@ -3,6 +3,7 @@ package view;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
+import java.util.Locale;
 
 /**
  * 这个类表示游戏过程中的整个游戏界面，是一切的载体
@@ -159,6 +160,14 @@ public class ChessGameFrame extends JFrame {
         button.setFont(new Font("Rockwell", Font.BOLD, 20));
         add(button);
     }
+    private boolean loadVerify(File file){
+        String filename = file.getName();
+        String suffix = filename.substring(filename.lastIndexOf('.'));
+if (!suffix.toLowerCase(Locale.ROOT).equals(".txt")){
+    JOptionPane.showMessageDialog(this, "101");
+    return false;
+}return true;
+    }
     private void addLoadButton() {
         JButton button = new JButton("Load");
         button.setLocation(HEIGTH, HEIGTH / 10 + 360);
@@ -171,6 +180,7 @@ public class ChessGameFrame extends JFrame {
             jfc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES );
             jfc.showDialog(new JLabel(), "选择");
             File file=jfc.getSelectedFile();
+            if (loadVerify(file)){
             if(file.isDirectory()){
                 System.out.println("文件夹:"+file.getAbsolutePath());
             }else if(file.isFile()){
@@ -178,7 +188,8 @@ public class ChessGameFrame extends JFrame {
             }
             System.out.println(jfc.getSelectedFile().getName());
             String path = String.valueOf(file);
-            chessboardComponent.loadGameFromFile(path);
+            chessboardComponent.loadGameFromFile(path);}
+
         });
     }
     private void addNewGameButton(){
