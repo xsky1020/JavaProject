@@ -18,6 +18,7 @@ public class ChessPiece {
         return name;
     }
 
-    public Color getColor(){return color;}
-
+    public Color getColor(){
+        return color;
+    }
 }
